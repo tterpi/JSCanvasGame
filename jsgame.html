@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <script type="application/javascript">
+	let grid;
+	let canvas;
+	let border;
+	let activeShape;
+	let tShape;
+	let shapes;
+	let paused;
+	let loopId;
+	let nextShape;
+	let loopActive;
+	let score;
+	let lines;
+	let level;
+	let gameOver;
+	let lineScores = [40,100,300,1200];
+	let baseMoveClock = 1000;
+	let moveClock = 1000;
+	
+	function init(){
+		
+		canvas = document.getElementById("canvas");
+		
+	  border = {
+		type : "border",
+		color: "rgb(200,200,200)"
+	  }
+	  
+	  let blueBlock = {
+		type : "block",
+		active: true,
+		color: "rgb(0,0,200)"
+	  }
+	  
+	  let redBlock = {
+		type : "block",
+		active: true,
+		color: "rgb(200,0,0)"
+	  }
+	  
+	  let yellowBlock = {
+		type : "block",
+		active: true,
+		color: "rgb(250,200,0)"
+	  }
+	  
+	  let blackBlock = {
+		type : "block",
+		active: true,
+		color: "rgb(0,0,0)"
+	  }
+	
+	  tShape = [[null, yellowBlock, null], [yellowBlock, yellowBlock, yellowBlock], [null, null, null]];
+	  
+	  iShape = [[null, yellowBlock, null], [null, yellowBlock, null], [null, yellowBlock, null], [null, yellowBlock, null]];
+	  
+	  sShape = [[null, redBlock], [redBlock, redBlock], [redBlock, null]];
+	  
+	  zShape = [[yellowBlock, null], [yellowBlock, yellowBlock], [null, yellowBlock]];
+	  
+	  oShape = [[blackBlock, blackBlock], [blackBlock, blackBlock]];
+	  
+	  lShape = [[null, null, blueBlock], [null, null, blueBlock], [null, blueBlock, blueBlock]];
+	  
+	  jShape = [[null, redBlock, redBlock], [null, null, redBlock], [null, null, redBlock]];
+	  
+	  shapes = [tShape, iShape, sShape, zShape, oShape, lShape, jShape];	
+	
+		document.addEventListener('keydown', (event) => {
+			const keyCode = event.code;
+			console.log(keyCode);
+			if(keyCode == "KeyA"){
+					console.log("move left");
+					moveLeft();
+			}
+			
+			if(keyCode == "KeyD"){
+					console.log("move right");
+					moveRight();
+			}
+			
+			if(keyCode == "KeyW"){
+					console.log("rotate");
+					rotateActiveShape();
+			}
+			
+			if(keyCode == "KeyS"){
+					console.log("move down");
+					moveDown();
+			}
+			
+			if(keyCode == "KeyP"){
+				paused = !paused;
+			}
+			
+			if(keyCode == "KeyR"){
+				loopActive = false;
+				window.clearTimeout(loopId);
+				startGame();
+			}		
+		})
+		startGame();
+	}
+	
+	function startGame(){
+	
+	paused = false;
+	gameOver = false;
+	level = 0;
+	score = 0;
+	lines = 0;
+	grid = new Array(12);
+	
+      for (var column = 0; column<grid.length; column++){
+        grid[column] = new Array(22);
+		console.log("column created");
+      }
+      
+	  console.log(grid);
+	  	  
+	  activeShape = {
+			shape: shapes[ Math.floor(Math.random() * (shapes.length))],
+			y: 20,
+			x: 3,
+			orientation: 0
+	  }
+	  
+	  nextShape = shapes[ Math.floor(Math.random() * (shapes.length))];
+
+	  
+      for(var i =0; i<grid.length; i++){
+        grid[i][0] = border;
+        grid[i][ grid[0].length - 1] = border;
+      }
+	  
+	  for(var i =0; i<grid[0].length; i++){
+		grid[0][i] = border;
+		grid[grid.length - 1][i] = border;
+	  }
+	 
+
+		/*
+	console.log(tShape);
+	tShape = rotateShape(tShape);
+	console.log(tShape);
+	tShape = rotateShape(tShape);
+	console.log(tShape);
+	*/
+	draw();
+	moveLoop();
+	}
+	
+	function rotateActiveShape(){
+		if(!paused){
+			if(canRotate()){
+				activeShape.shape = rotateShape(activeShape.shape);
+			}
+			draw();
+		}
+	}
+	
+	function rotateShape(shape){
+		xMax = shape.length-1;
+		yMax = shape[0].length-1;
+		
+		let newShape = shape[0].map(function (row, i){
+			return shape.map(function (col){
+				return col[(shape[0].length-1) - i]
+			})
+		})
+		
+		return newShape;
+		/*
+		let newShape = new Array(yMax+1);
+		for (var i =0; i< newShape.length; i++){
+			newShape[i] = new Array
+		}
+		*/
+	}
+	
+	function canMove(dir){
+	let result = true;
+		for(var i =0; i<activeShape.shape.length; i++){
+			for(var j =0; j<activeShape.shape[i].length; j++){
+				if(activeShape.shape[i][j]){
+					if(dir == "down"){
+						console.log(grid[activeShape.x+i][activeShape.y-j-1]);
+						result = result && (grid[activeShape.x+i][activeShape.y-j-1] == null);
+					}else if(dir == "left"){
+						result = result && (grid[activeShape.x+i-1][activeShape.y-j] == null);
+					}else if(dir == "right"){
+						console.log(grid[activeShape.x+i+1][activeShape.y-j]);
+						result = result && (grid[activeShape.x+i+1][activeShape.y-j] == null);
+					}
+				}
+			}
+		}
+		console.log("canMove: ");
+		console.log(result);
+		return result;
+	}
+	
+	function checkShapePosition(shape, x, y){
+		let result = true;
+		for(var i =0; i<shape.length; i++){
+			for(var j =0; j<shape[i].length; j++){
+				if(shape[i][j]){
+						console.log(grid[x+i][y-j]);
+						result = result && (grid[x+i][y-j] == null);
+				}
+			}
+		}
+		return result;
+	}
+	
+	function canRotate(){
+		let rotatedShape = rotateShape(activeShape.shape);
+		return checkShapePosition(rotatedShape, activeShape.x, activeShape.y);
+	}
+	
+	function placeShape(){
+		for(var i =0; i<activeShape.shape.length; i++){
+			for(var j =0; j<activeShape.shape[i].length; j++){
+				if(activeShape.shape[i][j]){
+					grid[activeShape.x+i][activeShape.y-j] = activeShape.shape[i][j];
+				}
+			}
+		}
+	}
+	
+	function newActiveShape(){
+		activeShape = {
+			shape: nextShape,
+			y: 20,
+			x: 3,
+			orientation: 1
+		}
+		nextShape = shapes[ Math.floor(Math.random() * (shapes.length))];
+	  
+	  //game over
+	  if(!checkShapePosition(activeShape.shape, activeShape.x, activeShape.y)){
+		gameOver = true;
+		paused = true;
+		loopActive = false;
+		//startGame();
+	  }
+	}
+	
+	function moveDown(){
+		if(!paused){
+			if(canMove("down")){
+				activeShape.y--;
+				console.log("moved");
+			}else {
+				placeShape();
+				checkLines();
+				
+				//newActiveShape();
+			}
+			draw();
+		}
+	}
+	
+	function moveLeft(){
+		if(!paused){
+			if(canMove("left")){
+				activeShape.x--;
+				console.log("moved");
+			}
+			draw();
+		}
+	}
+	
+	function moveRight(){
+		if(!paused){
+			if(canMove("right")){
+				activeShape.x++;
+				console.log("moved");
+			}
+			draw();
+		}
+	}
+	
+	function checkLines(){
+		let fullLines = [];
+		
+		//find full lines
+		for(let i = 1; i< grid[0].length-1; i++){
+			let fullLine = true;
+			for(let j = 1; j< grid.length-1; j++){
+				fullLine = fullLine && (grid[j][i] != null);
+			}
+			if(fullLine){
+				fullLines.push(i);
+			}
+		}
+		
+		console.log(fullLines);
+		console.log(fullLines.length);
+		
+		if(fullLines.length == 0){
+			newActiveShape();
+			return;
+		}
+		
+		paused = true;
+		//clearTimeout(loopId);
+		
+		//delete full lines
+		for(let y = 0; y < fullLines.length; y++){
+			if(fullLines[y]){
+				console.log("deleting line.");
+				for(let x = 1; x< grid.length-1; x++){
+					grid[x][fullLines[y]] = null;
+				}
+			}
+		}
+		window.setTimeout(function() {
+			draw();
+			//collapse empty lines
+			for(let y = 0; y < fullLines.length; y++){
+				if(fullLines[y]){
+					console.log("collapsing line: ");
+					console.log(fullLines[y]);
+					for(let line = fullLines[y]; line < (grid[0].length-2); line++){
+					console.log("COLLAPSING");
+						for(let col = 1; col < grid.length-1; col++){
+							grid[col][line-y] = grid[col][line-y+1];
+							console.log("COPYING");
+						}
+					}
+				}
+			}
+			
+			//set score and lines
+			score = score + lineScores[fullLines.length-1]*(level+1);
+			lines = lines + fullLines.length;
+			if(Math.floor(lines / 10) > 0){
+				level = Math.floor(lines / 10);
+			}
+			
+			if(moveClock > 200){
+				console.log("New clock");
+				//moveClock = moveClock - Math.pow(10-level,2);
+				//linear speed increase
+				moveClock = baseMoveClock -30 *level;
+			}
+			
+			console.log("draw collapsed");
+			draw();
+			newActiveShape();
+			paused = false;
+			
+			/*
+			window.setTimeout(function() {
+				console.log("draw collapsed");
+				draw();
+				newActiveShape();
+				paused = false;
+				//moveLoop();
+			}, 1000);
+			*/
+		
+		}, 1000);
+	}
+	
+	function moveLoop(){
+		loopId = window.setTimeout(function() {
+			loopActive = true;
+			if(!paused){
+				draw();
+				moveDown();
+			}
+			if(loopActive){
+				moveLoop();
+			}else{
+				console.log("loop killed: ");
+				console.log(loopId);
+			}
+		}, moveClock);
+	}
+	
+    function draw() {
+    
+	let cellSize = 20;
+	let cellMargin =1;
+	let cell = cellSize + cellMargin;
+	
+      if(canvas.getContext){
+			var ctx = canvas.getContext("2d");
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			
+		for(var i =0; i<grid.length; i++){
+			for(var j =grid[i].length-1; j>=0; j--){
+				if(grid[i][j]){
+					ctx.fillStyle = grid[i][j].color;
+					ctx.fillRect(10+i*cell, 10+(20-j+1)*cell, cellSize, cellSize);
+				}
+			}
+		}
+		
+		if(!paused){
+			for(var i =0; i<activeShape.shape.length; i++){
+				for(var j =0; j<activeShape.shape[i].length; j++){
+					if(activeShape.shape[i][j]){
+						ctx.fillStyle = activeShape.shape[i][j].color;
+						ctx.fillRect(10+(activeShape.x+i)*cell, 10+20*cell-((activeShape.y-(1+j))*cell), cellSize, cellSize);
+					}
+				}
+			}
+		}
+		
+			for(var i =0; i<nextShape.length; i++){
+				for(var j =0; j<nextShape[i].length; j++){
+					if(nextShape[i][j]){
+						ctx.fillStyle = nextShape[i][j].color;
+						ctx.fillRect(10+(13*cell)+(i*cell), 32+(j*cell), cellSize, cellSize);
+					}
+				}
+			}
+		
+			//ctx.fillStyle = "rgba(0, 0, 200, 0.5)";
+			//ctx.fillRect(30, 30, 55, 50);
+			
+			ctx.font = '20px sans-serif';
+			ctx.fillStyle = "rgba(0, 0, 0, 1)";
+			ctx.fillText('Next:', 10+(13*cell), 30);
+			ctx.fillText('Score:', 10+(13*cell), 30+3*cell+30);
+			ctx.fillText(score, 10+(13*cell), 30+3*cell+30*2);
+			ctx.fillText('Level:', 10+(13*cell), 30+3*cell+30*3);
+			ctx.fillText(level, 10+(13*cell), 30+3*cell+30*4);
+			ctx.fillText('Lines:', 10+(13*cell), 30+3*cell+30*5);
+			ctx.fillText(lines, 10+(13*cell), 30+3*cell+30*6);
+			ctx.fillText('Controls: WASD', 10+(13*cell), 30+3*cell+30*7);
+			ctx.fillText('Pause: P', 10+(13*cell), 30+3*cell+30*8);
+			ctx.fillText('Restart: R', 10+(13*cell), 30+3*cell+30*9);
+			if(gameOver){
+				ctx.fillText('GAME OVER', 10+(13*cell), 30+3*cell+30*10);
+			}
+      }
+    }
+  </script>
+ </head>
+ <body onload="init();">
+   <canvas id="canvas" width="1024" height="512"></canvas>
+ </body>
+</html>
